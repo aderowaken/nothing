@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ESP32 LED Remote</title>
+<style>
+  :root { --bg:#111827; --fg:#f9fafb; --muted:#9ca3af; --card:#1f2937; --on:#fbbf24; }
+  * { box-sizing: border-box; }
+  body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+         background:var(--bg); color:var(--fg); font-family:system-ui,sans-serif; }
+  .card { background:var(--card); padding:32px 24px; border-radius:20px; width:min(92vw,360px); text-align:center; }
+  h1 { font-size:1.2rem; margin:0 0 4px; }
+  #conn { color:var(--muted); font-size:.85rem; margin-bottom:24px; }
+  #bulb { width:96px; height:96px; border-radius:50%; margin:0 auto 24px; background:#374151;
+          transition:all .2s; }
+  #bulb.on { background:var(--on); box-shadow:0 0 40px 10px rgba(251,191,36,.6); }
+  .row { display:flex; gap:12px; }
+  button { flex:1; padding:16px; font-size:1.05rem; border:0; border-radius:12px; cursor:pointer;
+           background:#374151; color:var(--fg); }
+  button:active { transform:scale(.97); }
+  #on { background:var(--on); color:#111; font-weight:600; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>ESP32 LED</h1>
+  <div id="conn">connecting…</div>
+  <div id="bulb"></div>
+  <div class="row">
+    <button id="on">ON</button>
+    <button id="off">OFF</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.10.1/mqtt.min.js"></script>
+<script>
+  // Must match the topics in the ESP32 sketch
+  const TOPIC_SET   = "esp32-led-CHANGE-ME-8f3k2x/set";
+  const TOPIC_STATE = "esp32-led-CHANGE-ME-8f3k2x/state";
+
+  const connEl = document.getElementById("conn");
+  const bulb = document.getElementById("bulb");
+
+  const client = mqtt.connect("wss://broker.hivemq.com:8884/mqtt", {
+    clientId: "web-" + Math.random().toString(16).slice(2, 10),
+    reconnectPeriod: 2000,
+  });
+
+  client.on("connect", () => {
+    connEl.textContent = "connected";
+    client.subscribe(TOPIC_STATE);
+  });
+  client.on("reconnect", () => connEl.textContent = "reconnecting…");
+  client.on("offline", () => connEl.textContent = "offline");
+  client.on("message", (t, payload) => {
+    bulb.classList.toggle("on", payload.toString() === "ON");
+  });
+
+  document.getElementById("on").onclick  = () => client.publish(TOPIC_SET, "ON");
+  document.getElementById("off").onclick = () => client.publish(TOPIC_SET, "OFF");
+</script>
+</body>
+</html>
